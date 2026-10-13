@@ -1376,9 +1376,13 @@ def save_typevar(pickler, obj):
         "bound": obj.__bound__,
         "covariant": obj.__covariant__,
         "contravariant": obj.__contravariant__,
-        "infer_variance": getattr(obj, "__infer_variance__", False),
     }
-    pickler.save_reduce(_create_typevar, (args, kwargs), obj=obj)
+    state = None
+    if hasattr(typing.TypeVar, "__infer_variance__"): # Python >= 3.12
+        kwargs["infer_variance"] = obj.__infer_variance__
+    elif hasattr(obj, "__infer_variance__"): # typing_extensions on older Python
+        state = {"__infer_variance__": obj.__infer_variance__}
+    pickler.save_reduce(_create_typevar, (args, kwargs), obj=obj, state=state)
     logger.trace(pickler, "# Tv")
 
 if ThreadHandleType:

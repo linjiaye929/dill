@@ -117,9 +117,40 @@ def test_typing():
   return
 
 
+def test_typevar():
+  import typing
+  typevars = [
+    typing.TypeVar("T"),
+    typing.TypeVar("Constrained", int, str),
+    typing.TypeVar("Bound", bound=int),
+    typing.TypeVar("Covariant", covariant=True),
+    typing.TypeVar("Contravariant", contravariant=True),
+  ]
+  if hasattr(typing.TypeVar, '__infer_variance__'):
+    typevars.append(typing.TypeVar("Inferred", infer_variance=True))
+  else:
+    # typing_extensions attaches this attribute to native TypeVars.
+    for inferred in (False, True):
+      typevar = typing.TypeVar("Backported")
+      typevar.__infer_variance__ = inferred
+      typevars.append(typevar)
+
+  for protocol in range(dill.HIGHEST_PROTOCOL + 1):
+    for original in typevars:
+      restored, repeated = dill.copy((original, original), protocol=protocol)
+      assert isinstance(restored, typing.TypeVar)
+      assert restored is repeated
+      for name in ('__name__', '__constraints__', '__bound__',
+                   '__covariant__', '__contravariant__'):
+        assert getattr(restored, name) == getattr(original, name)
+      if hasattr(original, '__infer_variance__'):
+        assert restored.__infer_variance__ == original.__infer_variance__
+
+
 if __name__ == '__main__':
   test_frame_related()
   test_dict_contents()
   test_class()
   test_class_descriptors()
   test_typing()
+  test_typevar()
